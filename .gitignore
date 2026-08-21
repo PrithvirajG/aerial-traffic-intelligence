@@ -13,3 +13,4 @@ cache/
 .env
 kaggle.json
 .kaggle/
+kaggle/output/
