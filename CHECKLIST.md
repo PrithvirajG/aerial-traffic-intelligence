@@ -145,7 +145,44 @@ instead:
   Installing "Google Drive for Desktop" would mirror that folder onto this machine so I could
   read Colab's outputs (logs, cached parquet files, `runs.jsonl`) directly. Say the word if
   you want this — it's a background sync app, didn't want to install it without asking.
-- **Kaggle has an actual CLI/API** (`kaggle kernels push/status/output`) that genuinely would
-  let me trigger runs and pull results from here without a browser — the closest real thing to
-  "sync." Moot until the phone-verification block (§3) is resolved, and even then it's
-  batch push/poll/pull, not live — worth revisiting only if Kaggle gets unblocked.
+- **Kaggle has an actual CLI/API** (`kaggle kernels push/status/output/logs`) that genuinely
+  lets me trigger runs and pull results from here without a browser — the closest real thing
+  to "sync." **This is now live** (Kaggle phone-verification block got resolved) — see §7.
+
+## 7. Kaggle CLI sync — live, with two bugs found and fixed along the way
+
+- [done] `kaggle` CLI installed locally, authenticated. **Important**: this CLI version
+  (2.2.4) uses a single-token auth scheme (`KAGGLE_API_TOKEN`, prefixed `KGAT_`), saved to
+  `~/.kaggle/access_token` — **not** the classic `kaggle.json` username+key pair from older
+  tutorials. Don't be misled by docs describing the old format.
+- [done] `kaggle/kaggle_starter.ipynb` + `kaggle/kernel-metadata.json` created — Kaggle
+  counterpart of the Colab starter, adapted for `/kaggle/working/` persistence instead of a
+  Drive mount.
+- [done] Sync loop verified: `kaggle kernels push -p kaggle/` → `kaggle kernels status
+  <slug>` → `kaggle kernels logs <slug>` (use `kaggle kernels output` only if you actually
+  need the data files back — it downloads everything in `/kaggle/working/`, which can mean
+  gigabytes of partial model cache; `logs` alone is much faster for just seeing what happened).
+  On Windows, set `PYTHONIOENCODING=utf-8` before `kaggle kernels logs` or it'll crash on
+  unicode characters in the log.
+
+**Two real bugs found via this loop before trusting it for tomorrow:**
+
+1. **Kaggle assigned a Tesla P100 to the first API-pushed run, not a T4.** The organizers'
+   guide's manual GPU-selection step ("Session options → Accelerator → GPU T4 x2") only
+   applies to interactively-created notebooks — `kaggle kernels push` defaults to whatever
+   Kaggle's scheduler picks unless told otherwise. This matters because **P100 (compute
+   capability sm_60) is below the minimum modern `torch` builds support (sm_70+)** — it fails
+   with `CUDA error: no kernel image is available for execution on the device`, which looks
+   identical to a torch-version-mismatch bug but isn't one. Fixed: `kernel-metadata.json` now
+   sets `"machine_shape": "NvidiaTeslaT4"` explicitly (found via the actual enum in the
+   `kagglesdk` package source, not guessed — valid values are `NvidiaTeslaT4`,
+   `NvidiaTeslaP100`, `Tpu1VmV38`).
+2. **`--no-deps` on the transformers-from-source install was too blunt.** It prevented a
+   torch swap but also blocked `tokenizers` from being upgraded to the `>=0.23.1,<0.24.0`
+   transformers-main actually needs, causing an `ImportError` at first use. Fixed in both
+   notebooks: dropped `--no-deps`, pass the same `{pins}` (locking only torch/torchvision)
+   instead — pip resolves everything else normally.
+
+Both fixes are committed. **Not yet re-verified end-to-end after the second fix** — next
+`kaggle kernels push` should be watched through to a `COMPLETE` status before trusting this
+for the actual hackathon pipeline tomorrow.
