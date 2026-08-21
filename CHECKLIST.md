@@ -4,7 +4,9 @@ Based on the organizers' "Hackathon Prerequisites & Resources Guide" PDF. Their 
 setup is lighter than CONTEXT.md's original conda/local-GPU plan — the guide expects most
 teams to use **Kaggle/Colab T4 notebooks + hosted APIs**, not a fully local pipeline. This
 checklist reconciles the two: local machine does orchestration + lightweight tooling only,
-Kaggle does the heavy model work, and Gemini/NVIDIA NIM are fallback/supplementary APIs.
+Kaggle does the heavy model work, and NVIDIA NIM/Gemini/OpenRouter/Groq are a swappable
+fallback chain of hosted model providers, each best suited to a different pipeline role
+(see §4) rather than one being "the" choice over the others.
 
 Legend: **[done]** = Claude did this already · **[YOU]** = only you can do this (account
 creation, phone verification, browser signup) · **[ ]** = not started.
@@ -33,8 +35,8 @@ creation, phone verification, browser signup) · **[ ]** = not started.
   locally on purpose — no reason to pull a multi-GB CUDA wheel onto a 4GB card we won't
   train/infer heavy models on.
 - [done] `.env.example` created (copy to `.env`, fill in keys — `.env` is gitignored).
-- [done] `scripts/check_setup.py` written — one command verifies ffmpeg, local GPU, and both
-  hosted APIs once you've pasted in keys.
+- [done] `scripts/check_setup.py` written — one command verifies ffmpeg, local GPU, and all
+  four hosted API providers once you've pasted in keys (skips any that are missing).
 
 ## 3. Free GPU runtimes (guide Part 1) — **[YOU]**, ~10 min, must be done in browser
 - [ ] **Kaggle**: create account at kaggle.com → Settings → Phone Verification (GPU stays
@@ -49,17 +51,33 @@ creation, phone verification, browser signup) · **[ ]** = not started.
 I can prepare a ready-to-upload starter notebook (imports, model downloads, a smoke test)
 for whichever one you pick — say the word once your account/GPU access is confirmed.
 
-## 4. Hosted model APIs (guide Part 2) — **[YOU]** to get keys, then automated
+## 4. Hosted model APIs — **[YOU]** to get keys, then automated
+
+Four free, no-card options, each best at a different pipeline role. None of these compete with
+Claude Code's own subscription — they're only used by *our pipeline's* code (captioning, VQA,
+answer generation), never for the coding agent itself.
+
+| Provider | Native video? | Free tier | Best role in our pipeline |
+|---|---|---|---|
+| **NVIDIA NIM** | No (frames/images) | ~40 req/min, generous | Bulk per-chunk captioning if Kaggle setup has friction |
+| **Gemini Flash** | **Yes** — raw clip upload | Rate limits opaque, check AI Studio | Query-time "cheat mode": hand it a retrieved clip + query directly if the real pipeline is behind schedule |
+| **OpenRouter** | No (frames/images) | Flaky — free-model IDs rotate/rate-limit | Model diversity, A/B testing captioners, extra fallback |
+| **Groq** | No (frames/images) | Free, very fast inference | Low-latency demo-time answer generation |
+
 - [ ] **NVIDIA NIM**: build.nvidia.com → create account → verify phone → open any vision
   model at build.nvidia.com/explore/vision → "Get API Key" → copy it (shown once) →
-  paste into `.env` as `NVIDIA_API_KEY`. Free tier ≈ 40 req/min, OpenAI-SDK compatible.
+  paste into `.env` as `NVIDIA_API_KEY`.
 - [ ] **Gemini API**: aistudio.google.com → sign in → Get API key → Create API key → paste
   into `.env` as `GEMINI_API_KEY`. Free tier = Flash/Flash-Lite only (not Pro) — build against
-  `gemini-2.5-flash` from the start. Note: **Gemini accepts video/images directly**, so it's
-  a genuinely useful fallback path if the local/Kaggle pipeline is behind schedule at 4 PM —
-  point it straight at a clip for a quick-and-dirty answer.
-- [ ] After both keys are in `.env`, run: `python scripts/check_setup.py` — should print
-  `[OK]` for both NVIDIA NIM and Gemini.
+  `gemini-2.5-flash` from the start.
+- [ ] **OpenRouter** *(optional but recommended)*: openrouter.ai → sign up → API Keys → Create
+  key → paste into `.env` as `OPENROUTER_API_KEY`. This is a **separate use** from the guide's
+  "OpenRouter for Claude Code" section — you don't need that part since Claude Code already
+  has your subscription. This key is only for our own pipeline's model calls.
+- [ ] **Groq** *(optional but recommended)*: console.groq.com → sign up → API Keys → Create
+  API Key → paste into `.env` as `GROQ_API_KEY`.
+- [ ] After keys are in `.env`, run: `python scripts/check_setup.py` — should print `[OK]` for
+  every provider you filled in (missing ones are skipped with a `[WARN]`, not an error).
 
 ### Note on data sovereignty (from CONTEXT.md §6)
 CONTEXT.md flagged checking with organizers before sending footage to a hosted API. Since the
@@ -68,20 +86,24 @@ in their own prerequisites guide, that concern is resolved for this event — ho
 sanctioned. The "kept it local" pitch angle from CONTEXT.md still works as a *design choice*
 (and is worth keeping for the demo narrative), just not as a compliance requirement.
 
-## 5. Before-you-arrive checklist (verbatim from the guide, tracked here)
+## 5. Before-you-arrive checklist (guide's list, plus OpenRouter/Groq)
 - [ ] Kaggle account created and phone-verified
 - [ ] Colab opened at least once
 - [ ] NVIDIA API key generated and saved (in `.env`)
 - [ ] Gemini API key generated and saved (in `.env`)
-- [ ] One test call made successfully with each (`python scripts/check_setup.py` covers NVIDIA
-      + Gemini in one shot; Kaggle/Colab GPU checks are separate manual steps in-browser)
+- [ ] OpenRouter API key generated and saved (in `.env`) — optional, recommended
+- [ ] Groq API key generated and saved (in `.env`) — optional, recommended
+- [ ] One test call made successfully with each (`python scripts/check_setup.py` covers all
+      four API providers in one shot; Kaggle/Colab GPU checks are separate manual steps in-browser)
 
 ## What's left for you to do manually, right now
 1. Kaggle signup + phone verification + GPU test (§3)
 2. Colab GPU test (§3, lower priority)
 3. NVIDIA NIM key (§4)
 4. Gemini key (§4)
-5. Paste both keys into `.env` (copy from `.env.example`), then run
-   `python scripts/check_setup.py` and confirm both show `[OK]`
+5. OpenRouter key (§4, optional)
+6. Groq key (§4, optional)
+7. Paste keys into `.env` (copy from `.env.example`), then run
+   `python scripts/check_setup.py` and confirm `[OK]` for whichever you filled in
 
 Everything else on this list is already done.

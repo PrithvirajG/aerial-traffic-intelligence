@@ -76,6 +76,50 @@ def check_gemini():
         fail(f"Gemini call failed: {e}")
 
 
+def check_openrouter():
+    key = os.getenv("OPENROUTER_API_KEY")
+    if not key or key.startswith("sk-or-v1-...") or key == "":
+        warn("OPENROUTER_API_KEY not set in .env - skipping OpenRouter test")
+        return
+    try:
+        from openai import OpenAI
+
+        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=key)
+        resp = client.chat.completions.create(
+            model="nvidia/nemotron-3.5-lightning:free",
+            messages=[{"role": "user", "content": "Reply with exactly: OK"}],
+            max_tokens=10,
+        )
+        text = resp.choices[0].message.content
+        ok(f"OpenRouter responded: {text!r}")
+    except Exception as e:
+        fail(
+            f"OpenRouter call failed: {e}\n"
+            "       (free-model IDs rotate - check https://openrouter.ai/models?max_price=0 "
+            "and update the model string in check_openrouter() if this model is gone)"
+        )
+
+
+def check_groq():
+    key = os.getenv("GROQ_API_KEY")
+    if not key or key.startswith("gsk_...") or key == "":
+        warn("GROQ_API_KEY not set in .env - skipping Groq test")
+        return
+    try:
+        from openai import OpenAI
+
+        client = OpenAI(base_url="https://api.groq.com/openai/v1", api_key=key)
+        resp = client.chat.completions.create(
+            model="llama-3.2-11b-vision-preview",
+            messages=[{"role": "user", "content": "Reply with exactly: OK"}],
+            max_tokens=10,
+        )
+        text = resp.choices[0].message.content
+        ok(f"Groq responded: {text!r}")
+    except Exception as e:
+        fail(f"Groq call failed: {e}")
+
+
 def check_local_gpu():
     try:
         out = subprocess.run(
@@ -111,9 +155,11 @@ if __name__ == "__main__":
     check_local_gpu()
     check_torch_cuda()
     print()
-    print("--- Hosted API access (Part 2 of the prereqs guide) ---")
+    print("--- Hosted API access (pipeline model providers) ---")
     check_nvidia_nim()
     check_gemini()
+    check_openrouter()
+    check_groq()
     print()
     print("Reminder: Kaggle GPU (30 hrs/week) and Colab GPU still need to be verified")
     print("manually in the browser - see CHECKLIST.md.")
