@@ -11,3 +11,5 @@ cache/
 *.mkv
 *.avi
 .env
+kaggle.json
+.kaggle/
