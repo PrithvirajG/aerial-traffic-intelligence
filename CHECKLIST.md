@@ -125,3 +125,27 @@ sanctioned. The "kept it local" pitch angle from CONTEXT.md still works as a *de
    `python scripts/check_setup.py` and confirm `[OK]` for whichever you filled in
 
 Everything else on this list is already done.
+
+## 6. Cloud backup + local <-> Colab sync workflow
+
+- [done] Repo pushed to GitHub: `https://github.com/PrithvirajG/FlytBase-VisualAI-Hackathon-22-08`
+  (private). `gh` CLI installed and authenticated as `PrithvirajG`; remote uses HTTPS (SSH
+  push failed — no SSH key configured on this machine — HTTPS + Git Credential Manager works).
+  I'll push after every commit from here on unless told otherwise.
+
+**There is no live/automatic sync between Claude Code and a running Colab kernel** — Colab has
+no API for that (Vertex AI has one; free Colab doesn't). Two manual-but-reliable sync points
+instead:
+
+- **Code sync = GitHub.** In Colab: File → Open notebook → GitHub tab → check "Include private
+  repos" → authorize once → open `notebooks/colab_starter.ipynb` from this repo directly. If
+  you edit it in Colab, File → Save a copy in GitHub pushes it back; I `git pull` here to see it.
+- **Data sync = Google Drive** *(optional, not set up — needs your decision)*: the starter
+  notebook already writes its model cache to `/content/drive/MyDrive/flytbase_hackathon/`.
+  Installing "Google Drive for Desktop" would mirror that folder onto this machine so I could
+  read Colab's outputs (logs, cached parquet files, `runs.jsonl`) directly. Say the word if
+  you want this — it's a background sync app, didn't want to install it without asking.
+- **Kaggle has an actual CLI/API** (`kaggle kernels push/status/output`) that genuinely would
+  let me trigger runs and pull results from here without a browser — the closest real thing to
+  "sync." Moot until the phone-verification block (§3) is resolved, and even then it's
+  batch push/poll/pull, not live — worth revisiting only if Kaggle gets unblocked.
