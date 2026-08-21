@@ -6,6 +6,7 @@ import os
 import sys
 import shutil
 import subprocess
+import threading
 
 from dotenv import load_dotenv
 
@@ -15,6 +16,20 @@ RESET = "\033[0m"
 GREEN = "\033[32m"
 RED = "\033[31m"
 YELLOW = "\033[33m"
+
+
+def run_with_timeout(func, seconds=20):
+    """Runs func() in a thread; prints a FAIL and moves on if it hasn't returned in time.
+
+    Belt-and-suspenders on top of each client's own timeout= param - guarantees no single
+    unresponsive provider can hang the whole script, regardless of whether a given SDK's
+    timeout argument actually works the way its docs claim.
+    """
+    thread = threading.Thread(target=func, daemon=True)
+    thread.start()
+    thread.join(seconds)
+    if thread.is_alive():
+        fail(f"{func.__name__} timed out after {seconds}s (hung network call) - skipping")
 
 
 def ok(msg):
@@ -47,9 +62,14 @@ def check_nvidia_nim():
     try:
         from openai import OpenAI
 
-        client = OpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=key)
+        client = OpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=key, timeout=15.0)
+        # Not meta/llama-3.2-90b-vision-instruct (the prereqs guide's example): confirmed via
+        # raw curl that the key/network/catalog are all fine, but that specific 90B model's
+        # endpoint hangs indefinitely (likely overloaded on the free tier - probably every
+        # team following the same guide hits this exact model). The 11B vision variant
+        # responds in <1s and is a better fit for our actual captioning workload anyway.
         resp = client.chat.completions.create(
-            model="meta/llama-3.2-90b-vision-instruct",
+            model="meta/llama-3.2-11b-vision-instruct",
             messages=[{"role": "user", "content": "Reply with exactly: OK"}],
             max_tokens=10,
         )
@@ -84,7 +104,7 @@ def check_openrouter():
     try:
         from openai import OpenAI
 
-        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=key)
+        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=key, timeout=15.0)
         resp = client.chat.completions.create(
             model="nvidia/nemotron-3.5-lightning:free",
             messages=[{"role": "user", "content": "Reply with exactly: OK"}],
@@ -108,7 +128,7 @@ def check_groq():
     try:
         from openai import OpenAI
 
-        client = OpenAI(base_url="https://api.groq.com/openai/v1", api_key=key)
+        client = OpenAI(base_url="https://api.groq.com/openai/v1", api_key=key, timeout=15.0)
         resp = client.chat.completions.create(
             model="llama-3.2-11b-vision-preview",
             messages=[{"role": "user", "content": "Reply with exactly: OK"}],
@@ -156,10 +176,10 @@ if __name__ == "__main__":
     check_torch_cuda()
     print()
     print("--- Hosted API access (pipeline model providers) ---")
-    check_nvidia_nim()
-    check_gemini()
-    check_openrouter()
-    check_groq()
+    run_with_timeout(check_nvidia_nim)
+    run_with_timeout(check_gemini)
+    run_with_timeout(check_openrouter)
+    run_with_timeout(check_groq)
     print()
     print("Reminder: Kaggle GPU (30 hrs/week) and Colab GPU still need to be verified")
     print("manually in the browser - see CHECKLIST.md.")
