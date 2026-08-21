@@ -10,3 +10,4 @@ cache/
 *.mp4
 *.mkv
 *.avi
+.env
