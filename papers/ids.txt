@@ -1,0 +1,14 @@
+2504.02259 T-star_Temporal_Search
+2411.13093 Video-RAG
+2502.01549 VideoRAG_HKUDS
+2606.12300 Temporal_Grounding_Search_Problem
+2511.16719 SAM3
+2404.01014 LAVAD
+2502.12558 MomentSeeker
+2606.13141 Rethinking_RAG_Long_Videos
+2504.13181 Perception_Encoder
+2502.14786 SigLIP2
+2412.01095 VERA
+2607.08075 UAV-OVVIS
+2511.05489 TimeSearch-R
+2603.13306 Compact_VLM_CCTV_Anomaly

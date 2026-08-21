@@ -1,0 +1,12 @@
+papers/*.pdf
+papers/raw/
+__pycache__/
+*.pyc
+.venv/
+data/
+cache/
+*.parquet
+*.faiss
+*.mp4
+*.mkv
+*.avi
