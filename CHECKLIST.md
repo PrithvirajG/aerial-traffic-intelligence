@@ -39,14 +39,32 @@ creation, phone verification, browser signup) · **[ ]** = not started.
   four hosted API providers once you've pasted in keys (skips any that are missing).
 
 ## 3. Free GPU runtimes (guide Part 1) — **[YOU]**, ~10 min, must be done in browser
-- [ ] **Kaggle**: create account at kaggle.com → Settings → Phone Verification (GPU stays
-  locked until you do this) → Create → Notebook → Session options → Accelerator →
-  **GPU T4 x2** → run `import torch; print(torch.cuda.is_available())` in a cell, confirm
-  `True`. You get 30 GPU-hours/week; keep an eye on the sidebar counter tomorrow.
-- [ ] **Colab**: open colab.research.google.com, sign in, New notebook → Runtime → Change
-  runtime type → **T4 GPU** → Save → run the same `torch.cuda.is_available()` check.
-  (Only needed as a backup if Kaggle's queue is bad tomorrow — Kaggle's 30 free GPU-hrs/week
-  is the primary plan since Colab free-tier availability is less predictable.)
+
+⚠️ **Known blocker (2026-08-21): Kaggle phone verification is stuck** — your phone number is
+already registered to some other Kaggle account you can't identify (Kaggle dedupes phone
+numbers globally across accounts to stop GPU-quota farming). Almost certainly an old account
+of yours. Recovery steps, in order of speed:
+1. On kaggle.com's login page, try **"Continue with Google"** with every Google email you own
+   (personal, work, this hackathon's email, any old college/coursera email) — Kaggle accounts
+   are very often created silently via Google OAuth and forgotten.
+2. Try **"Sign in with GitHub"** the same way if you've ever linked it.
+3. Try **"Forgot password"** with likely email guesses — a reset email confirms the account exists.
+4. Kaggle support ticket (kaggle.com/contact) to release the number — realistically too slow
+   for tomorrow, file it but don't depend on it.
+5. **Given this, Colab is now the primary GPU plan for tomorrow**, not the backup — it only
+   needs Google sign-in, no phone verification, so it sidesteps the blocker entirely. Keep
+   trying Kaggle in parallel since 30 GPU-hrs/week is nicer, but don't block on it.
+6. **Test NVIDIA NIM's phone verification tonight, not tomorrow** — the prereqs guide requires
+   phone verification there too, and if it's the same underlying dedup problem, better to find
+   out now while there's time to sort it out.
+
+- [ ] **Kaggle** (secondary if blocked): create account at kaggle.com → Settings → Phone
+  Verification (GPU stays locked until you do this) → Create → Notebook → Session options →
+  Accelerator → **GPU T4 x2** → run `import torch; print(torch.cuda.is_available())` in a
+  cell, confirm `True`. 30 GPU-hours/week if it works.
+- [ ] **Colab** (primary for now): open colab.research.google.com, sign in, New notebook →
+  Runtime → Change runtime type → **T4 GPU** → Save → run the same
+  `torch.cuda.is_available()` check.
 
 I can prepare a ready-to-upload starter notebook (imports, model downloads, a smoke test)
 for whichever one you pick — say the word once your account/GPU access is confirmed.
