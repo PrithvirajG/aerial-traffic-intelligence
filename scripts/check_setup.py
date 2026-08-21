@@ -61,7 +61,7 @@ def check_nvidia_nim():
 
 def check_gemini():
     key = os.getenv("GEMINI_API_KEY")
-    if not key or key == "":
+    if not key or key in ("", "...", "YOUR-KEY-HERE"):
         warn("GEMINI_API_KEY not set in .env - skipping Gemini test")
         return
     try:
