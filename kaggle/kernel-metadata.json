@@ -1,0 +1,13 @@
+{
+  "id": "prithvirajgotepatil/flytbase-hackathon-starter",
+  "title": "FlytBase Hackathon Starter",
+  "code_file": "kaggle_starter.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": []
+}
