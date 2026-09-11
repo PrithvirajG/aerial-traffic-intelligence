@@ -1,0 +1,14 @@
+{
+  "id": "prithvirajgotepatil/flytbase-level-1-tracked-demo",
+  "title": "FlytBase Level 1 Tracked Demo",
+  "code_file": "tracked_demo.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "enable_internet": true,
+  "dataset_sources": ["prithvirajgotepatil/flytbase-hackathon-clips-compressed"],
+  "competition_sources": [],
+  "kernel_sources": []
+}

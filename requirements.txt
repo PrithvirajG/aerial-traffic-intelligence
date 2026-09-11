@@ -1,0 +1,52 @@
+# Local dev environment for the hackathon pipeline.
+# Install with: .venv\Scripts\pip install -r requirements.txt  (Windows)
+#           or: .venv/bin/pip install -r requirements.txt      (bash)
+
+# --- Hosted API clients (used by check_setup.py and any pipeline stage that
+# calls out for heavy generation instead of running a model locally) ---
+python-dotenv
+openai          # OpenAI-compatible client - also used for NVIDIA NIM, OpenRouter, Groq
+google-genai    # Gemini
+
+# --- Kaggle CLI/SDK (already used tonight for the sync/smoke-test loop) ---
+kaggle
+
+# --- App framework candidates - keeping all three since the framework
+# choice is still open; each is small to install, decide later without
+# needing to reinstall anything ---
+fastapi
+uvicorn[standard]
+streamlit
+gradio
+
+# --- Video/image handling (frame extraction from source footage) ---
+opencv-python
+pillow
+
+# --- Vector search for the retrieval index (in-process library, no server -
+# see CHECKLIST.md/chat notes for why no DB server is used here) ---
+faiss-cpu
+numpy
+
+# --- Local, CPU-only model inference for query-time text embedding.
+# SigLIP2 must run wherever the app runs, since query embeddings have to
+# land in the exact same vector space as the frame embeddings computed on
+# Kaggle. It's small enough to run on CPU for one query at a time - no GPU
+# needed for this. NOT for Qwen3-VL or any bulk/heavy work - that stays on
+# Kaggle or goes through a hosted API. ---
+torch
+transformers
+
+# --- Level 1: detection & tracking (actual hackathon PS, see PLAN.md) ---
+ultralytics     # YOLO detector + built-in ByteTrack/BoT-SORT tracking
+supervision     # detection/tracking annotators, ByteTrack - also used in the Kaggle notebook
+lapx            # linear assignment solver most trackers depend on
+motmetrics      # MOTA/IDF1/HOTA - for scoring our own tracker once we have any ground truth
+
+# --- Level 2: fine-grained classification & kinematics (see LEVEL2_PLAN.md) ---
+scipy           # savgol_filter for smoothed velocity/acceleration in pipeline/kinematics.py
+
+# --- Dashboard: interactive points/flow canvas in app.py (legend click-to-isolate,
+# hover tooltips - beyond what st.bar_chart/st.line_chart give) ---
+plotly
+

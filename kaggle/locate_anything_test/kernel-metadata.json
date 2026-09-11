@@ -1,0 +1,14 @@
+{
+  "id": "prithvirajgotepatil/flytbase-locateanything-test",
+  "title": "FlytBase LocateAnything Test",
+  "code_file": "locate_anything_test.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "enable_internet": true,
+  "dataset_sources": ["prithvirajgotepatil/flytbase-hackathon-footage"],
+  "competition_sources": [],
+  "kernel_sources": []
+}

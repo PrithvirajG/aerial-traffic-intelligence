@@ -1,0 +1,14 @@
+{
+  "id": "prithvirajgotepatil/flytbase-90s-botsort",
+  "title": "FlytBase 90s BotSort",
+  "code_file": "level4_90s.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "enable_internet": true,
+  "dataset_sources": ["prithvirajgotepatil/flytbase-hackathon-clips-compressed"],
+  "competition_sources": [],
+  "kernel_sources": []
+}

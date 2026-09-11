@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drone Traffic Analytics</title>
+<style>
+  :root {
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #232322;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --border: rgba(255, 255, 255, 0.10);
+    --accent: #3987e5;
+    --radius: 10px;
+    --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 13px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1680px; margin: 0 auto; padding: 20px 24px 48px; }
+
+  /* ---------- header ---------- */
+  header { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 6px; }
+  h1 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+  h1 .sub { color: var(--muted); font-weight: 400; margin-left: 10px; font-size: 13px; }
+  .selectors { display: flex; gap: 10px; margin-left: auto; flex-wrap: wrap; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  select {
+    background: var(--surface-2); color: var(--ink); border: 1px solid var(--border);
+    border-radius: 7px; padding: 6px 10px; font-family: var(--font); font-size: 12px;
+    min-width: 150px; cursor: pointer;
+  }
+  select:hover { border-color: rgba(255,255,255,0.22); }
+  .runinfo {
+    color: var(--muted); font-size: 11px; margin: 8px 0 18px;
+    padding-bottom: 14px; border-bottom: 1px solid var(--border);
+  }
+  .runinfo code { color: var(--ink-2); font-size: 11px; }
+
+  /* ---------- panels ---------- */
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column;
+  }
+  .panel-head {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 11px 14px; border-bottom: 1px solid var(--border); min-height: 44px;
+  }
+  .panel-title { font-size: 12px; font-weight: 600; letter-spacing: 0.01em; }
+  .panel-note { font-size: 10px; color: var(--muted); }
+  .panel-body { position: relative; background: #000; }
+  .stage { position: relative; width: 100%; aspect-ratio: 16 / 9; }
+  .stage > * { position: absolute; inset: 0; width: 100%; height: 100%; }
+  video { display: block; object-fit: contain; background: #000; }
+  /* Canvases default to click-through so the video overlay doesn't swallow player controls.
+     Interactive canvases must opt back IN - forgetting this is what made the map inert. */
+  canvas { pointer-events: none; }
+  #canvasFlow { background: var(--surface); pointer-events: auto; cursor: crosshair; }
+  #mapCanvas { background: #0b0b0b; pointer-events: auto; cursor: grab; touch-action: none; }
+  #mapCanvas:active { cursor: grabbing; }
+
+  /* Map controls, overlaid like a real slippy map - discoverability for zoom, which is
+     otherwise an invisible affordance. */
+  /* `.stage > *` stretches children to fill the stage; the control cluster must opt out or
+     it becomes an invisible full-size overlay that eats every map click. */
+  .stage > .mapctl {
+    position: absolute; z-index: 5; display: flex; flex-direction: column; gap: 4px;
+    top: 10px; left: 10px; inset: auto auto auto 10px; width: auto; height: auto;
+  }
+  .mapctl button {
+    width: 30px; height: 30px; border-radius: 7px; cursor: pointer;
+    background: rgba(20,20,19,0.82); color: var(--ink); border: 1px solid var(--border);
+    font-size: 15px; line-height: 1; display: grid; place-items: center;
+    font-family: var(--font); backdrop-filter: blur(3px);
+  }
+  .mapctl button:hover { background: rgba(45,45,43,0.92); border-color: rgba(255,255,255,0.28); }
+  .mapctl button:active { transform: translateY(1px); }
+  .mapctl .small { font-size: 11px; }
+
+  /* ---------- toggles ---------- */
+  .toggles { display: flex; gap: 6px; margin-left: auto; }
+  .toggle {
+    background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 10px; font-family: var(--font); font-size: 11px;
+    cursor: pointer; user-select: none;
+  }
+  .toggle:hover { border-color: rgba(255,255,255,0.22); color: var(--ink); }
+  .toggle[aria-pressed="true"] { background: rgba(57,135,229,0.16); border-color: var(--accent); color: #cfe2fb; }
+
+  /* ---------- playbar ---------- */
+  .playbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-top: 1px solid var(--border); background: var(--surface);
+  }
+  .playbtn {
+    background: var(--surface-2); color: var(--ink); border: 1px solid var(--border);
+    border-radius: 6px; width: 30px; height: 26px; cursor: pointer; font-size: 12px;
+    display: grid; place-items: center;
+  }
+  .playbtn:hover { border-color: rgba(255,255,255,0.24); }
+  input[type=range] { flex: 1; accent-color: var(--accent); height: 4px; }
+  .tcode { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 11px; min-width: 84px; text-align: right; }
+
+  /* ---------- filters ---------- */
+  .filters {
+    margin-top: 16px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px;
+  }
+  .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; }
+  .fgroup-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+  }
+  .fgroup-label button {
+    background: none; border: none; color: var(--accent); font-size: 10px;
+    cursor: pointer; padding: 0; font-family: var(--font); text-transform: none; letter-spacing: 0;
+  }
+  .cathead { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+  .cattabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  .cattab {
+    background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--border);
+    border-radius: 7px; padding: 5px 11px; font-family: var(--font); font-size: 11.5px;
+    cursor: pointer; user-select: none;
+  }
+  .cattab:hover { border-color: rgba(255,255,255,0.24); color: var(--ink); }
+  .cattab[aria-pressed="true"] {
+    background: rgba(57,135,229,0.18); border-color: var(--accent); color: #d3e5fb; font-weight: 500;
+  }
+  .cattab[disabled] { opacity: 0.35; cursor: not-allowed; }
+  .catbody { display: flex; align-items: flex-start; gap: 14px; }
+  .catactions { display: flex; gap: 8px; margin-left: auto; flex: none; }
+  .linkbtn {
+    background: none; border: none; color: var(--accent); font-size: 11px;
+    cursor: pointer; padding: 2px 0; font-family: var(--font);
+  }
+  .linkbtn:hover { text-decoration: underline; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
+    padding: 3px 10px 3px 7px; font-size: 11px; color: var(--muted); cursor: pointer; user-select: none;
+  }
+  .chip:hover { border-color: rgba(255,255,255,0.22); }
+  .chip[aria-pressed="true"] { color: var(--ink); border-color: rgba(255,255,255,0.28); background: #2b2b29; }
+  .chip .dot { width: 9px; height: 9px; border-radius: 3px; flex: none; opacity: 0.4; }
+  .chip[aria-pressed="true"] .dot { opacity: 1; }
+  .chip .cnt { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 10px; }
+
+  /* ---------- stats ---------- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .stat .k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  .stat .v { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin-top: 3px; }
+  .stat .n { font-size: 10px; color: var(--muted); }
+
+  /* ---------- charts ---------- */
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; margin-top: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .card h3 { font-size: 12px; font-weight: 600; margin: 0 0 2px; }
+  .card .hint { font-size: 10px; color: var(--muted); margin-bottom: 10px; }
+  .chart { width: 100%; height: 190px; display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: var(--muted); }
+  .legend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { text-align: left; font-weight: 500; color: var(--muted); font-size: 10px;
+       text-transform: uppercase; letter-spacing: 0.05em; padding: 0 8px 6px 0;
+       border-bottom: 1px solid var(--border); }
+  td { padding: 5px 8px 5px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+       font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block;
+            vertical-align: -1px; margin-right: 6px; border: 1px solid rgba(255,255,255,0.2); }
+  .scroll { max-height: 232px; overflow-y: auto; }
+
+  .tip {
+    position: fixed; pointer-events: none; z-index: 50; display: none;
+    background: #000; border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 9px; font-size: 11px; color: var(--ink); white-space: nowrap;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+  }
+  .loading { padding: 60px 0; text-align: center; color: var(--muted); }
+  .note { font-size: 10px; color: var(--muted); margin-top: 8px; }
+
+  .l3head {
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    margin: 34px 0 14px; padding-top: 22px; border-top: 1px solid var(--border);
+  }
+  .l3head h2 { font-size: 16px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  .pill {
+    display: inline-block; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 999px; padding: 1px 7px; font-size: 10px; color: var(--ink-2);
+    margin-right: 4px; white-space: nowrap;
+  }
+  @media (max-width: 1100px) { .panels { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Drone Traffic Analytics <span class="sub">detection · tracking · kinematics</span></h1>
+    <div class="selectors">
+      <div class="field"><label for="selSource">Scene</label><select id="selSource"></select></div>
+      <div class="field"><label for="selDuration">Duration</label><select id="selDuration"></select></div>
+      <div class="field"><label for="selModel">Detector · tracker</label><select id="selModel"></select></div>
+    </div>
+  </header>
+  <div class="runinfo" id="runinfo">Loading…</div>
+
+  <div class="panels">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Source video</span>
+        <span class="panel-note">overlay drawn live</span>
+        <div class="toggles">
+          <button class="toggle" id="tgBoxes" aria-pressed="true">Boxes</button>
+          <button class="toggle" id="tgTrails" aria-pressed="true">Trails</button>
+          <button class="toggle" id="tgLabels" aria-pressed="false">IDs</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="stage">
+          <video id="video" playsinline preload="auto"></video>
+          <canvas id="canvasOverlay"></canvas>
+        </div>
+      </div>
+      <div class="playbar">
+        <button class="playbtn" id="btnPlay" title="Play/pause">▶</button>
+        <input type="range" id="seek" min="0" max="100" step="0.1" value="0">
+        <span class="tcode" id="tcode">0.00 / 0.00s</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="cattabs" id="rightViewTabs">
+          <button class="cattab" data-view="flow" aria-pressed="true">Points &amp; flow</button>
+          <button class="cattab" data-view="map" aria-pressed="false" id="tabMap">Map</button>
+        </div>
+        <span class="panel-note" id="flowNote">live-synced to playback</span>
+        <div class="toggles" id="flowToggles">
+          <button class="toggle" id="tgFlowPoints" aria-pressed="true">Points</button>
+          <button class="toggle" id="tgFlowTrails" aria-pressed="true">Trails</button>
+          <button class="toggle" id="tgArrows" aria-pressed="true">Arrows</button>
+          <button class="toggle" id="tgFlowAll" aria-pressed="false">Full history</button>
+        </div>
+        <div class="toggles" id="mapToggles" hidden>
+          <select id="mapBase" title="Basemap">
+            <option value="sat">Satellite</option>
+            <option value="osm">Street map</option>
+            <option value="none">No basemap</option>
+          </select>
+          <button class="toggle" id="mgRoads" aria-pressed="false">Links</button>
+          <button class="toggle" id="mgPoints" aria-pressed="true">Points</button>
+          <button class="toggle" id="mgTraj" aria-pressed="true">Trails</button>
+          <button class="toggle" id="mgArrows" aria-pressed="true">Arrows</button>
+          <button class="toggle" id="mgQueues" aria-pressed="true">Queues</button>
+          <button class="toggle" id="mgDesire" aria-pressed="false">Desire</button>
+          <button class="toggle" id="mgHistory" aria-pressed="false">Full history</button>
+          <button class="toggle" id="mapReset" title="Reset view (or double-click the map)">⤢ Fit</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="stage" id="stageFlow"><canvas id="canvasFlow"></canvas></div>
+        <div class="stage" id="stageMap" hidden>
+          <canvas id="mapCanvas"></canvas>
+          <div class="mapctl">
+            <button id="mapZoomIn" title="Zoom in (scroll up)">+</button>
+            <button id="mapZoomOut" title="Zoom out (scroll down)">−</button>
+            <button id="mapFit" class="small" title="Fit to road network (double-click map)">⤢</button>
+          </div>
+        </div>
+      </div>
+      <div class="playbar" style="flex-direction:column;align-items:stretch;gap:8px">
+        <div class="legend" id="catLegend"></div>
+        <span class="panel-note" id="flowStats">—</span>
+        <span class="panel-note" id="mapAttrib" hidden></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="cathead">
+      <span class="fgroup-label" style="margin:0">Colour &amp; filter by</span>
+      <div class="cattabs" id="catTabs"></div>
+    </div>
+    <div class="catbody">
+      <div class="chips" id="fActive"></div>
+      <div class="catactions">
+        <button class="linkbtn" id="btnAll">all</button>
+        <button class="linkbtn" id="btnNone">none</button>
+      </div>
+    </div>
+    <div class="note" id="filterNote"></div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="charts">
+    <div class="card">
+      <h3 id="chartClassTitle">Tracked objects by class</h3>
+      <div class="hint">Unique track IDs matching the filter · follows the selected category</div>
+      <canvas class="chart" id="chartClass"></canvas>
+    </div>
+    <div class="card">
+      <h3>Speed distribution</h3>
+      <div class="hint">Per-track average speed (px/s) — pixel-space, no geo-calibration yet</div>
+      <canvas class="chart" id="chartSpeed"></canvas>
+    </div>
+    <div class="card">
+      <h3>Objects on screen over time</h3>
+      <div class="hint">Detections per frame by class · marker follows playback</div>
+      <canvas class="chart" id="chartTime"></canvas>
+      <div class="legend" id="legendTime"></div>
+    </div>
+    <div class="card">
+      <h3>Track detail</h3>
+      <div class="hint">Longest-lived tracks matching filters</div>
+      <div class="scroll"><table id="tblTracks"><thead><tr>
+        <th>ID</th><th>Class</th><th>Colour</th><th>Avg spd</th><th>Max spd</th><th>Dur</th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- ============ Level 4: spatial grounding ============ -->
+  <div id="l4" hidden>
+    <div class="l3head">
+      <h2>Spatial grounding — bound to the road network</h2>
+      <span class="panel-note" id="l4note"></span>
+    </div>
+    <div class="stats" id="l4stats"></div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>Per-lane metrics on real geometry</h3>
+      <div class="hint" id="laneHint"></div>
+      <div class="scroll" style="max-height:320px">
+        <table id="tblLanes"><thead><tr>
+          <th>Carriageway</th><th>Link</th><th>Lane</th><th>Vehicles</th>
+          <th>All (km/h)</th><th>Running (km/h)</th><th>Parked</th><th>Modal split</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Level 3: aggregate insight ============ -->
+  <div id="l3" hidden>
+    <div class="l3head">
+      <h2>Aggregate insight</h2>
+      <span class="panel-note" id="l3note"></span>
+    </div>
+
+    <div class="stats" id="l3stats"></div>
+
+    <div class="charts">
+      <div class="card">
+        <h3>Speed profile across the segment</h3>
+        <div class="hint">Median and p85 speed by distance along the road · p85 is the standard measure of prevailing speed</div>
+        <canvas class="chart" id="chartProfile"></canvas>
+        <div class="legend">
+          <span>left bar = p85 · right bar = median</span>
+          <span><i style="background:#007f35"></i>slow</span>
+          <span><i style="background:#5d8900"></i></span>
+          <span><i style="background:#c67300"></i></span>
+          <span><i style="background:#f96050"></i>fast</span>
+        </div>
+        <div class="note" id="hotspotNote"></div>
+      </div>
+
+      <div class="card">
+        <h3>Flow–density relationship</h3>
+        <div class="hint">Each point is one 2s interval · the fundamental diagram of traffic flow</div>
+        <canvas class="chart" id="chartFundamental"></canvas>
+        <div class="note">Colour encodes median speed in that interval: darker = slower.</div>
+      </div>
+
+      <div class="card">
+        <h3>Turning movements &amp; origin–destination</h3>
+        <div class="hint">Movement counts by turn type, and the busiest approach→exit pairs</div>
+        <canvas class="chart" id="chartTurns" style="height:120px"></canvas>
+        <div class="scroll" style="max-height:150px"><table id="tblOD"><thead><tr>
+          <th>Approach → exit</th><th>Vehicles</th><th>Share</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+
+      <div class="card">
+        <h3>Queue lengths over time</h3>
+        <div class="hint">Spatial extent of stopped vehicles (&lt;4 km/h) per interval</div>
+        <canvas class="chart" id="chartQueue"></canvas>
+        <div class="note" id="queueNote"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>Directional corridors &amp; lane volumes</h3>
+      <div class="hint" id="corridorHint"></div>
+      <div class="scroll" style="max-height:360px">
+        <table id="tblCorridors"><thead><tr>
+          <th>Approach</th><th>Travel</th><th>Vehicles</th><th>Share</th>
+          <th>Median</th><th>p85</th><th>Lanes</th><th>Modal split</th><th>Turns</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>Classified counts by interval</h3>
+      <div class="hint">Per 2-second window: arrivals, flow rate, concurrent vehicles, prevailing speed</div>
+      <div class="scroll" style="max-height:300px">
+        <table id="tblIntervals"><thead><tr>
+          <th>Window</th><th>Vehicles</th><th>Arrivals</th><th>Flow (veh/h)</th>
+          <th>Concurrent</th><th>Median km/h</th><th>Stopped</th><th>By class</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -165,24 +165,17 @@ instead:
   On Windows, set `PYTHONIOENCODING=utf-8` before `kaggle kernels logs` or it'll crash on
   unicode characters in the log.
 
-**Two real bugs found via this loop before trusting it for tomorrow:**
+**Six real bugs found via this loop, across six push cycles, before trusting it for
+tomorrow — full detail (symptoms, root causes, exact fixes) now lives in `KAGGLE.md` rather
+than duplicated here.** Short version: wrong GPU assigned to the first API-pushed run (P100
+instead of T4), an over-blunt `--no-deps` flag, a bleeding-edge transformers API shape
+change, two separate CUDA-OOM issues (device placement, then genuine capacity — fixed via
+4-bit quantization + input downscaling).
 
-1. **Kaggle assigned a Tesla P100 to the first API-pushed run, not a T4.** The organizers'
-   guide's manual GPU-selection step ("Session options → Accelerator → GPU T4 x2") only
-   applies to interactively-created notebooks — `kaggle kernels push` defaults to whatever
-   Kaggle's scheduler picks unless told otherwise. This matters because **P100 (compute
-   capability sm_60) is below the minimum modern `torch` builds support (sm_70+)** — it fails
-   with `CUDA error: no kernel image is available for execution on the device`, which looks
-   identical to a torch-version-mismatch bug but isn't one. Fixed: `kernel-metadata.json` now
-   sets `"machine_shape": "NvidiaTeslaT4"` explicitly (found via the actual enum in the
-   `kagglesdk` package source, not guessed — valid values are `NvidiaTeslaT4`,
-   `NvidiaTeslaP100`, `Tpu1VmV38`).
-2. **`--no-deps` on the transformers-from-source install was too blunt.** It prevented a
-   torch swap but also blocked `tokenizers` from being upgraded to the `>=0.23.1,<0.24.0`
-   transformers-main actually needs, causing an `ImportError` at first use. Fixed in both
-   notebooks: dropped `--no-deps`, pass the same `{pins}` (locking only torch/torchvision)
-   instead — pip resolves everything else normally.
-
-Both fixes are committed. **Not yet re-verified end-to-end after the second fix** — next
-`kaggle kernels push` should be watched through to a `COMPLETE` status before trusting this
-for the actual hackathon pipeline tomorrow.
+- [done] **Fully verified end-to-end, v6.** `kaggle kernels push -p kaggle/` reached
+  `KernelWorkerStatus.COMPLETE`; pulled logs show both real GPUs detected, all installs
+  clean, `SigLIP2 loaded OK. Embedding shape: torch.Size([1, 1152])`, and a genuine Qwen3-VL-
+  4B caption of the real demo image. This Kaggle account/notebook is ready for tomorrow.
+- See `KAGGLE.md` for: the full bug list, the `kernel-metadata.json` schema (esp.
+  `machine_shape`), why there's no live local↔Kaggle sync, the interactive-session-vs-API-
+  push tradeoff and which to use when, and how cross-run weight caching works.
